@@ -1,0 +1,25 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.DS_Store
+*.egg-info/
+
+# Local config for scripts/capture_fixture.py: may hold a username and
+# redaction names, but must never hold a password (the script refuses to
+# run if it finds one here) - prompt for the password instead.
+capture.local.json
+
+# A captured real-week fixture must be scrubbed by scripts/capture_fixture.py
+# and read by a human before it is ever committed. Ignored here so an
+# accidental `git add -A` cannot stage an unreviewed capture; add it
+# deliberately with `git add -f` once you have verified it by eye.
+tests/fixtures/real_week.html
+
+# Editor swap files (may mirror capture.local.json, which holds a username)
+*.sw[po]
+
+# Agent working notes: scratch reports, may quote captured page content
+.superpowers/

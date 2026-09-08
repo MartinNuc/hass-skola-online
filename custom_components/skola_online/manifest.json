@@ -1,0 +1,12 @@
+{
+  "domain": "skola_online",
+  "name": "Škola Online",
+  "codeowners": ["@MartinNuc"],
+  "config_flow": true,
+  "documentation": "https://github.com/MartinNuc/hass-skola-online",
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/MartinNuc/hass-skola-online/issues",
+  "requirements": ["beautifulsoup4>=4.12.0"],
+  "version": "0.1.0"
+}

@@ -1,0 +1,49 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Škola Online",
+        "description": "Sign in with the same details you use at skolaonline.cz.",
+        "data": {
+          "username": "Username",
+          "password": "Password"
+        }
+      },
+      "child": {
+        "title": "Choose a child",
+        "description": "This account can see more than one child. Add one now; you can add the others afterwards.",
+        "data": {
+          "child_id": "Child"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Sign in again",
+        "description": "Škola Online rejected the stored password. Enter the current one.",
+        "data": {
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not reach Škola Online. Check your connection and try again.",
+      "invalid_auth": "That username or password was rejected.",
+      "unknown": "Something unexpected went wrong. Check the Home Assistant log."
+    },
+    "abort": {
+      "already_configured": "That child is already set up.",
+      "reauth_successful": "Signed in again successfully."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Škola Online options",
+        "description": "Choose how often to refresh and how many weeks ahead to fetch. Keep both modest — skolaonline.cz is someone else's server.",
+        "data": {
+          "scan_interval_hours": "Refresh interval (hours)",
+          "weeks_ahead": "Weeks to fetch ahead"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,11 @@
+# pytest-homeassistant-custom-component pins an exact Home Assistant version
+# internally (currently 2026.2.3, which satisfies our 2025.3.0 floor). Pin it
+# exactly here too so CI installs the same combination this was tested
+# against, instead of a floating `homeassistant>=` line racing it and
+# possibly resolving to a mismatched pair.
+pytest-homeassistant-custom-component==0.13.316
+pytest>=8.0.0
+pytest-asyncio>=0.24.0
+beautifulsoup4>=4.12.0
+aioresponses>=0.7.6
+pytest-freezer>=0.4.8

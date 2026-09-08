@@ -1,0 +1,49 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Škola Online",
+        "description": "Přihlaste se stejnými údaji jako na skolaonline.cz.",
+        "data": {
+          "username": "Uživatelské jméno",
+          "password": "Heslo"
+        }
+      },
+      "child": {
+        "title": "Vyberte dítě",
+        "description": "Tento účet vidí více dětí. Přidejte teď jedno, ostatní můžete přidat potom.",
+        "data": {
+          "child_id": "Dítě"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Přihlaste se znovu",
+        "description": "Škola Online odmítla uložené heslo. Zadejte prosím aktuální.",
+        "data": {
+          "password": "Heslo"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Nepodařilo se spojit se Školou Online. Zkontrolujte připojení a zkuste to znovu.",
+      "invalid_auth": "Neplatné uživatelské jméno nebo heslo.",
+      "unknown": "Došlo k neočekávané chybě. Podívejte se do logu Home Assistant."
+    },
+    "abort": {
+      "already_configured": "Toto dítě už je nastavené.",
+      "reauth_successful": "Přihlášení proběhlo úspěšně."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Nastavení Škola Online",
+        "description": "Zvolte, jak často se má rozvrh aktualizovat a kolik týdnů dopředu stahovat. Obojí raději s mírou – skolaonline.cz je cizí server.",
+        "data": {
+          "scan_interval_hours": "Interval aktualizace (hodiny)",
+          "weeks_ahead": "Počet týdnů dopředu"
+        }
+      }
+    }
+  }
+}
