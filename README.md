@@ -33,7 +33,7 @@ One calendar entity per child, named after the child. Each lesson is an event:
 
 | Field | Content |
 |---|---|
-| Summary | Subject abbreviation, e.g. `ČJ` |
+| Summary | Full subject name by default, e.g. `Český jazyk a literatura` — configurable, see Options below |
 | Description | Full subject name and teacher |
 | Location | Room |
 
@@ -53,11 +53,19 @@ From *Settings → Devices & Services → Škola Online → Configure* (per chil
 |---|---|---|
 | Refresh interval | 6 hours | 1–24 hours |
 | Weeks to fetch ahead | 4 | 1–8 |
+| Event title | Full subject name | Full subject name / Abbreviation / Abbreviation and full subject name |
 
 The interval is in whole hours, not minutes — this is a school timetable, not
 a stock ticker, and the lower bound keeps the integration a polite guest on
-skolaonline.cz's server rather than hammering it. Changing either value takes
+skolaonline.cz's server rather than hammering it. Changing any value takes
 effect immediately; no restart needed.
+
+Event title controls what a lesson's calendar summary shows: the full
+subject name (e.g. `Matematika`), the abbreviation (`M`, what fits in a
+calendar card cell), or both together (`M — Matematika`). The description
+always keeps the full subject name and teacher, whichever title you pick.
+School events such as `2. školní den` are unaffected — they have no separate
+abbreviation, so they always show their own title.
 
 ## Development: capturing a real-page fixture
 

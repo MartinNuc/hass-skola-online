@@ -36,6 +36,18 @@ CONF_WEEKS_AHEAD: Final = "weeks_ahead"
 DEFAULT_SCAN_INTERVAL_HOURS: Final = 6
 DEFAULT_WEEKS_AHEAD: Final = 4
 
+# Options-flow key: how a lesson's calendar event title is built (see
+# calendar.to_calendar_event). "full" is the owner's chosen default, so an
+# entry with no stored options (every entry created before this option
+# existed) must behave as if it had picked "full".
+CONF_EVENT_TITLE: Final = "event_title"
+
+EVENT_TITLE_FULL: Final = "full"
+EVENT_TITLE_ABBREVIATION: Final = "abbreviation"
+EVENT_TITLE_BOTH: Final = "both"
+
+DEFAULT_EVENT_TITLE: Final = EVENT_TITLE_FULL
+
 # Bounds enforced by the options flow. Expressed in whole hours, not minutes:
 # this is a school timetable, not a stock ticker, and a lower bound of one
 # hour (rather than allowing e.g. every few minutes) keeps the integration a

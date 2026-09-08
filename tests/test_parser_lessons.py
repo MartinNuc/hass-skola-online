@@ -112,3 +112,49 @@ def test_parse_week_falls_back_to_visible_text_when_a_tooltip_is_missing():
     assert entries[0].subject_full is None
     assert entries[0].teacher is None
     assert entries[0].is_lesson is True
+
+
+def test_marker_class_supplies_a_full_name_the_tooltip_title_does_not():
+    """The 'třídnická hodina' (class-teacher period) cell's tooltip title is
+    just 'TH ', with no "(...)" full name (see tests/fixtures/real_week.html)
+    - so its data cell carries a class of its own, KuvOUTridnickaHodina,
+    which is the only place the full name comes from.
+    """
+    cell = (
+        '<td class="DctCellBottom DctCell">'
+        '<table class="DctInnerTableType10">'
+        '<tr><td class="KuvOUTridnickaHodina" '
+        "onmouseover=\"onMouseOverTooltip('TH ',"
+        "'Učitel:~Novák J.~Učebna:~U101~Den (vyuč. hodina):~Po 14.9. (5)')\">"
+        '<span class="KuvBunkaRozvrhNadpis">TH</span>'
+        "</td></tr></table></td>"
+    )
+    html = week_html(rows=day_row("Po", "14.9.", EMPTY_CELL + cell + EMPTY_CELL * 2))
+    entries = parse_week(html, monday=date(2026, 9, 14), tz=PRAGUE)
+
+    assert len(entries) == 1
+    entry = entries[0]
+    assert entry.subject == "TH"
+    assert entry.subject_full == "Třídnická hodina"
+    assert entry.teacher == "Novák J."
+    assert entry.is_lesson is True
+
+
+def test_a_tooltip_full_name_wins_over_the_marker_class():
+    """Belt and braces: if a cell ever carried both a tooltip full name and a
+    marker class, the tooltip - the real source of truth - must win.
+    """
+    cell = (
+        '<td class="DctCellBottom DctCell">'
+        '<table class="DctInnerTableType10">'
+        '<tr><td class="KuvOUTridnickaHodina" '
+        "onmouseover=\"onMouseOverTooltip('TH (Nějaký jiný název) ',"
+        "'Učitel:~Novák J.~Učebna:~U101~Den (vyuč. hodina):~Po 14.9. (5)')\">"
+        '<span class="KuvBunkaRozvrhNadpis">TH</span>'
+        "</td></tr></table></td>"
+    )
+    html = week_html(rows=day_row("Po", "14.9.", EMPTY_CELL + cell + EMPTY_CELL * 2))
+    entries = parse_week(html, monday=date(2026, 9, 14), tz=PRAGUE)
+
+    assert len(entries) == 1
+    assert entries[0].subject_full == "Nějaký jiný název"

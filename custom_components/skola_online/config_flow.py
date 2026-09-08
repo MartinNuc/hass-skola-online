@@ -25,11 +25,16 @@ from .api.models import Child
 from .const import (
     CONF_CHILD_ID,
     CONF_CHILD_NAME,
+    CONF_EVENT_TITLE,
     CONF_SCAN_INTERVAL_HOURS,
     CONF_WEEKS_AHEAD,
+    DEFAULT_EVENT_TITLE,
     DEFAULT_SCAN_INTERVAL_HOURS,
     DEFAULT_WEEKS_AHEAD,
     DOMAIN,
+    EVENT_TITLE_ABBREVIATION,
+    EVENT_TITLE_BOTH,
+    EVENT_TITLE_FULL,
     MAX_SCAN_INTERVAL_HOURS,
     MAX_WEEKS_AHEAD,
     MIN_SCAN_INTERVAL_HOURS,
@@ -244,6 +249,20 @@ class SkolaOnlineOptionsFlow(OptionsFlowWithReload):
                         )
                     ),
                     vol.Coerce(int),
+                ),
+                vol.Required(
+                    CONF_EVENT_TITLE,
+                    default=options.get(CONF_EVENT_TITLE, DEFAULT_EVENT_TITLE),
+                ): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            EVENT_TITLE_FULL,
+                            EVENT_TITLE_ABBREVIATION,
+                            EVENT_TITLE_BOTH,
+                        ],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                        translation_key=CONF_EVENT_TITLE,
+                    )
                 ),
             }
         )

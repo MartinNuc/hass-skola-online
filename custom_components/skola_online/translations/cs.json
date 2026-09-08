@@ -38,11 +38,21 @@
     "step": {
       "init": {
         "title": "Nastavení Škola Online",
-        "description": "Zvolte, jak často se má rozvrh aktualizovat a kolik týdnů dopředu stahovat. Obojí raději s mírou – skolaonline.cz je cizí server.",
+        "description": "Zvolte, jak často se má rozvrh aktualizovat, kolik týdnů dopředu stahovat a jak se mají titulkovat události v kalendáři. První dvě volby raději s mírou – skolaonline.cz je cizí server.",
         "data": {
           "scan_interval_hours": "Interval aktualizace (hodiny)",
-          "weeks_ahead": "Počet týdnů dopředu"
+          "weeks_ahead": "Počet týdnů dopředu",
+          "event_title": "Název události"
         }
+      }
+    }
+  },
+  "selector": {
+    "event_title": {
+      "options": {
+        "full": "Celý název předmětu",
+        "abbreviation": "Zkratka",
+        "both": "Zkratka a celý název předmětu"
       }
     }
   }

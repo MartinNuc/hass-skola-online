@@ -38,11 +38,21 @@
     "step": {
       "init": {
         "title": "Škola Online options",
-        "description": "Choose how often to refresh and how many weeks ahead to fetch. Keep both modest — skolaonline.cz is someone else's server.",
+        "description": "Choose how often to refresh, how many weeks ahead to fetch, and how calendar events are titled. Keep the first two modest — skolaonline.cz is someone else's server.",
         "data": {
           "scan_interval_hours": "Refresh interval (hours)",
-          "weeks_ahead": "Weeks to fetch ahead"
+          "weeks_ahead": "Weeks to fetch ahead",
+          "event_title": "Event title"
         }
+      }
+    }
+  },
+  "selector": {
+    "event_title": {
+      "options": {
+        "full": "Full subject name",
+        "abbreviation": "Abbreviation",
+        "both": "Abbreviation and full subject name"
       }
     }
   }

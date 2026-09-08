@@ -1,11 +1,21 @@
+from dataclasses import replace
 from datetime import date, datetime, timedelta
 from unittest.mock import MagicMock
 from zoneinfo import ZoneInfo
+
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.skola_online.api.models import Entry
 from custom_components.skola_online.calendar import (
     SkolaOnlineCalendar,
     to_calendar_event,
+)
+from custom_components.skola_online.const import (
+    CONF_EVENT_TITLE,
+    DOMAIN,
+    EVENT_TITLE_ABBREVIATION,
+    EVENT_TITLE_BOTH,
+    EVENT_TITLE_FULL,
 )
 
 PRAGUE = ZoneInfo("Europe/Prague")
@@ -38,12 +48,20 @@ def _entry_between(start: datetime, end: datetime, subject: str) -> Entry:
     )
 
 
-def _calendar_with_data(coordinator_data) -> SkolaOnlineCalendar:
+def _calendar_with_data(coordinator_data, options: dict | None = None) -> SkolaOnlineCalendar:
+    # These tests are about window filtering and ordering, not about title
+    # rendering (that's covered directly against to_calendar_event below), so
+    # pin the title style to the abbreviation - today's behaviour - unless a
+    # test asks for something else, rather than leaving it to fall out of a
+    # MagicMock default that happens not to match any real style.
     coordinator = MagicMock()
     coordinator.data = coordinator_data
     entry = MagicMock()
     entry.entry_id = "abc"
     entry.title = "Dítě Jedno"
+    entry.options = (
+        {CONF_EVENT_TITLE: EVENT_TITLE_ABBREVIATION} if options is None else options
+    )
     return SkolaOnlineCalendar(coordinator, entry)
 
 
@@ -165,3 +183,83 @@ async def test_entries_come_back_in_chronological_order_across_weeks(hass):
     )
 
     assert [e.summary for e in events] == ["ČJ", "later"]
+
+
+# --- event_title styles ---------------------------------------------------
+
+
+def test_full_title_style_uses_the_full_subject_name():
+    event = to_calendar_event(_entry(8), title_style=EVENT_TITLE_FULL)
+
+    assert event.summary == "Český jazyk a literatura"
+
+
+def test_full_title_style_falls_back_to_the_abbreviation_when_unknown():
+    unknown_full = replace(_entry(8), subject_full=None)
+
+    event = to_calendar_event(unknown_full, title_style=EVENT_TITLE_FULL)
+
+    assert event.summary == "ČJ"
+
+
+def test_abbreviation_title_style_uses_the_abbreviation():
+    event = to_calendar_event(_entry(8), title_style=EVENT_TITLE_ABBREVIATION)
+
+    assert event.summary == "ČJ"
+
+
+def test_both_title_style_combines_abbreviation_and_full_name():
+    event = to_calendar_event(_entry(8), title_style=EVENT_TITLE_BOTH)
+
+    assert event.summary == "ČJ — Český jazyk a literatura"
+
+
+def test_both_title_style_falls_back_to_the_abbreviation_when_unknown():
+    unknown_full = replace(_entry(8), subject_full=None)
+
+    event = to_calendar_event(unknown_full, title_style=EVENT_TITLE_BOTH)
+
+    assert event.summary == "ČJ"
+
+
+def test_school_event_title_is_unchanged_under_every_title_style():
+    school_event = _entry(8, subject="2. školní den", is_lesson=False)
+
+    for style in (EVENT_TITLE_FULL, EVENT_TITLE_ABBREVIATION, EVENT_TITLE_BOTH):
+        event = to_calendar_event(school_event, title_style=style)
+        assert event.summary == "2. školní den"
+        assert event.description is None
+
+
+def test_description_still_carries_the_teacher_under_every_title_style():
+    for style in (EVENT_TITLE_FULL, EVENT_TITLE_ABBREVIATION, EVENT_TITLE_BOTH):
+        event = to_calendar_event(_entry(8), title_style=style)
+        assert "Novák J." in event.description
+        assert "Český jazyk a literatura" in event.description
+
+
+def test_full_title_style_suppresses_a_description_that_would_only_repeat_it():
+    # No teacher: under "full", the description would otherwise be nothing
+    # but the full subject name again - exactly what the title already says.
+    no_teacher = replace(_entry(8), teacher=None)
+
+    event = to_calendar_event(no_teacher, title_style=EVENT_TITLE_FULL)
+
+    assert event.summary == "Český jazyk a literatura"
+    assert event.description is None
+
+
+async def test_calendar_entity_with_no_stored_options_defaults_to_full_title(hass):
+    """An entry created before this option existed has no options at all."""
+    coordinator = MagicMock()
+    coordinator.data = {date(2026, 9, 14): [_entry(8)]}
+    config_entry = MockConfigEntry(domain=DOMAIN, options={})
+
+    calendar = SkolaOnlineCalendar(coordinator, config_entry)
+    events = await calendar.async_get_events(
+        hass,
+        datetime(2026, 9, 14, 0, 0, tzinfo=PRAGUE),
+        datetime(2026, 9, 15, 0, 0, tzinfo=PRAGUE),
+    )
+
+    assert [e.summary for e in events] == ["Český jazyk a literatura"]

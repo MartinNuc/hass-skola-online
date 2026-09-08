@@ -19,6 +19,18 @@ GRID_ID = "CCADynamicCalendarTable"
 # DctInnerTableType10 is the class the live site uses for a taught lesson.
 LESSON_CLASS = "DctInnerTableType10"
 
+# Some lesson types carry no full name in their tooltip title (see
+# tests/fixtures/real_week.html's "TH" cell, whose tooltip title is just
+# 'TH ' with no "(...)"). Those types mark their inner data cell with a
+# class of their own instead, so this maps that marker class to the full
+# name it stands for. The tooltip is still the source of truth for every
+# subject it does tell us about - this is only a fallback for the classes
+# we have evidence for, not a general abbreviation dictionary, so add to it
+# only when a marker class is confirmed against a real page.
+MARKER_CLASS_SUBJECT_FULL: dict[str, str] = {
+    "KuvOUTridnickaHodina": "Třídnická hodina",
+}
+
 # Czech weekday abbreviations as they appear in the day-label column.
 _WEEKDAY_OFFSETS = {"Po": 0, "Út": 1, "St": 2, "Čt": 3, "Pá": 4, "So": 5, "Ne": 6}
 
@@ -180,6 +192,18 @@ def parse_week(html: str, monday: date, tz: tzinfo) -> list[Entry]:
     return entries
 
 
+def _marker_subject_full(inner: Tag) -> str | None:
+    """The full name implied by a known marker class on the inner cell.
+
+    Only consulted once the tooltip itself has nothing - see
+    MARKER_CLASS_SUBJECT_FULL.
+    """
+    for marker_class, full_name in MARKER_CLASS_SUBJECT_FULL.items():
+        if inner.find(class_=marker_class) is not None:
+            return full_name
+    return None
+
+
 def _build_entry(
     cell: Tag,
     inner: Tag,
@@ -213,7 +237,7 @@ def _build_entry(
         start=datetime.combine(day, first.start, tzinfo=tz),
         end=datetime.combine(day, last.end, tzinfo=tz),
         subject=subject,
-        subject_full=tooltip.get("full"),
+        subject_full=tooltip.get("full") or _marker_subject_full(inner),
         teacher=tooltip.get("Učitel"),
         room=tooltip.get("Učebna"),
         period=tooltip_period if tooltip_period is not None else first.number,
