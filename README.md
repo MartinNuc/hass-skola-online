@@ -45,6 +45,42 @@ plus the next three, so substitutions posted during the week are picked up and
 a Friday still shows you next Monday. Both numbers are configurable — see
 below.
 
+## Homework
+
+Each child also gets a **Homework** sensor (`sensor.<child>_homework`, or `sensor.<child>_domaci_ukoly` if Home Assistant runs in Czech). Its
+state is the number of tasks on the child's *Domácí úkoly* page, and its
+`homework` attribute lists them: title, subject, when assigned, when due,
+submission status and the teacher's full assignment text. It is checked on the
+same refresh interval as the timetable.
+
+### Adding new homework to a to-do list
+
+To track homework on a list you tick off yourself, for example the built-in
+Shopping List, pick that list under *Add new homework to* in the options
+(below). Each task is added once, when it first appears on the site. The
+integration remembers which tasks it has already added, and that survives
+restarts, so ticking an item off or deleting it never brings it back.
+
+Items are named `Subject: Task`. If the list supports due dates and
+descriptions (e.g. Local To-do), those go in their own fields. The Shopping
+List supports neither, so there the due date goes into the name instead —
+`Český jazyk a literatura: Psaní číslice 2 (do 23.9.)`.
+
+Every new task also fires a `skola_online_new_homework` event, with `title`,
+`subject`, `assigned`, `due`, `description`, `id` and `config_entry_id`, for
+automations of your own — a phone notification, say:
+
+```yaml
+triggers:
+  - trigger: event
+    event_type: skola_online_new_homework
+actions:
+  - action: notify.mobile_app_phone
+    data:
+      title: "Nový úkol: {{ trigger.event.data.subject }}"
+      message: "{{ trigger.event.data.title }}"
+```
+
 ## Options
 
 From *Settings → Devices & Services → Škola Online → Configure* (per child):
@@ -54,6 +90,7 @@ From *Settings → Devices & Services → Škola Online → Configure* (per chil
 | Refresh interval | 6 hours | 1–24 hours |
 | Weeks to fetch ahead | 4 | 1–8 |
 | Event title | Full subject name | Full subject name / Abbreviation / Abbreviation and full subject name |
+| Add new homework to | — (off) | Any to-do list entity |
 
 The interval is in whole hours, not minutes — this is a school timetable, not
 a stock ticker, and the lower bound keeps the integration a polite guest on

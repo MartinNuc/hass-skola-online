@@ -12,7 +12,7 @@ from datetime import date, datetime, time, timedelta, tzinfo
 from bs4 import BeautifulSoup, Tag
 
 from .exceptions import ParseError
-from .models import Child, Entry, Period
+from .models import Child, Entry, Homework, Period
 
 GRID_ID = "CCADynamicCalendarTable"
 
@@ -278,4 +278,165 @@ def parse_hidden_fields(html: str) -> dict[str, str]:
         name = element.get("name")
         if name in wanted:
             fields[name] = element.get("value", "")
+    return fields
+
+
+# --- Homework (Domácí úkoly, KUK005) -------------------------------------
+
+# The list is an Infragistics UltraWebGrid. Each header cell carries its
+# column number (columnno="6") and each data cell its row and column
+# (level="0_6"), so cells are matched to headers by number, never by
+# position: the server's HTML has row-label <th>s that the header row and
+# the data rows don't agree on. Visible columns are found by header text;
+# the task's GUID sits in hidden column 3, which has no header text, and is
+# what the "Zobrazit úkol" button opens.
+HOMEWORK_GRID_ID = "ctl00xmainxwg_main"
+HOMEWORK_ID_COLUMN = 3
+HOMEWORK_CHILDREN_SELECT = "ctl00$listOfChildrenPart$listOfChildren$DDLChildren"
+# Present on the homework page whether or not there is any homework, so an
+# empty list can be told apart from a page that is not the homework page.
+HOMEWORK_STATE_SELECT = "ctl00$main$ddlStavUkolu"
+HOMEWORK_DESCRIPTION_ID = "ctl00_main_uwt__ctl0_lblPodrobneZadaniValue"
+
+_HOMEWORK_COLUMNS = {
+    "title": "Název úkolu",
+    "subject": "Předmět",
+    "assigned": "Přiděleno",
+    "due": "Termín odevzdání",
+    "submitted": "Odevzdáno",
+}
+
+# "0_6": row 0, column 6. Only top-level rows (one row part) are homework.
+_CELL_LEVEL = re.compile(r"^(\d+)_(\d+)$")
+_GUID = re.compile(r"^[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$")
+# "23.9.2026 23:59" and "22.09.2026 09:19" both occur; the time is optional.
+_CZ_DATETIME = re.compile(
+    r"(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})(?:\s+(\d{1,2}):(\d{2}))?"
+)
+
+
+def parse_cz_datetime(text: str, tz: tzinfo) -> datetime | None:
+    """'23.9.2026 23:59' -> an aware datetime; a bare date means midnight."""
+    match = _CZ_DATETIME.search(text or "")
+    if match is None:
+        return None
+    day, month, year, hour, minute = match.groups()
+    try:
+        return datetime(
+            int(year), int(month), int(day), int(hour or 0), int(minute or 0),
+            tzinfo=tz,
+        )
+    except ValueError:
+        return None
+
+
+def parse_homework_list(html: str, tz: tzinfo) -> list[Homework]:
+    """Read the open homework from the KUK005 list page.
+
+    Returns [] when the page is the homework page but lists nothing; raises
+    ParseError when it is not the homework page at all.
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    grid = soup.find(id=HOMEWORK_GRID_ID)
+    if grid is None:
+        if soup.find("select", attrs={"name": HOMEWORK_STATE_SELECT}) is not None:
+            return []
+        raise ParseError("no homework list in the response")
+
+    columns: dict[str, int] = {}
+    for header in grid.find_all("th", attrs={"columnno": True}):
+        text = header.get_text(" ", strip=True)
+        for key, label in _HOMEWORK_COLUMNS.items():
+            if text == label:
+                columns[key] = int(header["columnno"])
+    if "title" not in columns:
+        raise ParseError("homework list has no 'Název úkolu' column")
+
+    rows: dict[str, dict[int, str]] = {}
+    for cell in grid.find_all("td", attrs={"level": True}):
+        match = _CELL_LEVEL.match(cell["level"])
+        if match is None:
+            continue
+        row, column = match.group(1), int(match.group(2))
+        rows.setdefault(row, {})[column] = cell.get_text(" ", strip=True)
+
+    homework: list[Homework] = []
+    for cells in rows.values():
+
+        def text(key: str) -> str:
+            index = columns.get(key)
+            return cells.get(index, "") if index is not None else ""
+
+        title = text("title")
+        if not title:
+            continue
+        task_id = cells.get(HOMEWORK_ID_COLUMN, "")
+        homework.append(
+            Homework(
+                id=task_id if _GUID.match(task_id) else None,
+                title=title,
+                subject=text("subject"),
+                assigned=parse_cz_datetime(text("assigned"), tz),
+                due=parse_cz_datetime(text("due"), tz),
+                submitted=text("submitted") or None,
+            )
+        )
+    return homework
+
+
+def parse_homework_description(html: str) -> str | None:
+    """The 'Podrobné zadání' text from a KUK006 detail page.
+
+    Paragraphs and <br>s become line breaks, so the text reads as the
+    teacher laid it out.
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    value = soup.find(id=HOMEWORK_DESCRIPTION_ID)
+    if value is None:
+        return None
+    for br in value.find_all("br"):
+        br.replace_with("\n")
+    # Innermost blocks only, so a <div> wrapping <p>s isn't read twice.
+    blocks = [
+        block
+        for block in value.find_all(["p", "div", "li"])
+        if block.find(["p", "div", "li"]) is None
+    ]
+    if blocks:
+        parts = [block.get_text().strip() for block in blocks]
+    else:
+        parts = [value.get_text().strip()]
+    lines = [
+        re.sub(r"[ \t\u00a0]+", " ", line).strip()
+        for part in parts
+        for line in part.split("\n")
+    ]
+    text = "\n".join(line for line in lines if line)
+    return text or None
+
+
+def parse_form_fields(html: str) -> dict[str, str]:
+    """Every field a browser would post back from this page.
+
+    Hidden inputs, each select's selected option and each ticked checkbox -
+    what an auto-postback submits. Buttons are left out: a postback is not a
+    button click.
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    fields: dict[str, str] = {}
+    for element in soup.find_all("input"):
+        name = element.get("name")
+        kind = (element.get("type") or "text").lower()
+        if not name or kind in {"submit", "button", "image", "file"}:
+            continue
+        if kind in {"checkbox", "radio"} and not element.has_attr("checked"):
+            continue
+        fields[name] = element.get("value", "on" if kind == "checkbox" else "")
+    for select in soup.find_all("select"):
+        name = select.get("name")
+        options = select.find_all("option")
+        if not name or not options:
+            continue
+        chosen = next((o for o in options if o.has_attr("selected")), options[0])
+        fields[name] = chosen.get("value", chosen.get_text(strip=True))
     return fields

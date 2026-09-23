@@ -42,7 +42,11 @@
         "data": {
           "scan_interval_hours": "Refresh interval (hours)",
           "weeks_ahead": "Weeks to fetch ahead",
-          "event_title": "Event title"
+          "event_title": "Event title",
+          "homework_todo": "Add new homework to"
+        },
+        "data_description": {
+          "homework_todo": "A to-do list, e.g. the Shopping List. Each newly assigned homework is added once; ticking it off or deleting it won't bring it back. Leave empty to only show homework on the sensor."
         }
       }
     }
@@ -53,6 +57,13 @@
         "full": "Full subject name",
         "abbreviation": "Abbreviation",
         "both": "Abbreviation and full subject name"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "homework": {
+        "name": "Homework"
       }
     }
   }

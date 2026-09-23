@@ -142,8 +142,8 @@ async def test_changing_options_reloads_the_entry_without_a_restart(hass):
     ):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
-        assert entry.runtime_data.weeks_ahead == 4
-        assert entry.runtime_data.update_interval == timedelta(hours=6)
+        assert entry.runtime_data.timetable.weeks_ahead == 4
+        assert entry.runtime_data.timetable.update_interval == timedelta(hours=6)
 
         result = await hass.config_entries.options.async_init(entry.entry_id)
         await hass.config_entries.options.async_configure(
@@ -158,5 +158,5 @@ async def test_changing_options_reloads_the_entry_without_a_restart(hass):
 
     assert entry.state is ConfigEntryState.LOADED
     assert entry.options[CONF_WEEKS_AHEAD] == 8
-    assert entry.runtime_data.weeks_ahead == 8
-    assert entry.runtime_data.update_interval == timedelta(hours=2)
+    assert entry.runtime_data.timetable.weeks_ahead == 8
+    assert entry.runtime_data.timetable.update_interval == timedelta(hours=2)

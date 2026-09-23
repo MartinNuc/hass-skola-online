@@ -76,7 +76,7 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up the calendar entity for this config entry."""
-    async_add_entities([SkolaOnlineCalendar(entry.runtime_data, entry)])
+    async_add_entities([SkolaOnlineCalendar(entry.runtime_data.timetable, entry)])
 
 
 class SkolaOnlineCalendar(CoordinatorEntity[SkolaOnlineCoordinator], CalendarEntity):

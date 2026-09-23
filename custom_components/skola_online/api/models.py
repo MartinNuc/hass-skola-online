@@ -35,3 +35,16 @@ class Entry:
     room: str | None
     period: int | None
     is_lesson: bool
+
+
+@dataclass(frozen=True)
+class Homework:
+    """One open assignment from the homework list (Domácí úkoly)."""
+
+    id: str | None  # the task's GUID; None if the list stopped exposing it
+    title: str
+    subject: str
+    assigned: datetime | None
+    due: datetime | None
+    submitted: str | None  # the list's own wording, e.g. "neodevzdává se"
+    description: str | None = None  # from the detail page, fetched separately

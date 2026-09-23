@@ -8,6 +8,9 @@ DOMAIN: Final = "skola_online"
 BASE_URL: Final = "https://aplikace.skolaonline.cz"
 LOGIN_URL: Final = f"{BASE_URL}/SOL/Prihlaseni.aspx"
 CALENDAR_URL: Final = f"{BASE_URL}/SOL/App/Kalendar/KZK001_KalendarTyden.aspx"
+HOMEWORK_URL: Final = f"{BASE_URL}/SOL/App/Ukoly/KUK005_UkolyStudenta.aspx"
+# One task's full assignment text; takes the task's GUID as ?UkolID=.
+HOMEWORK_DETAIL_URL: Final = f"{BASE_URL}/SOL/App/Ukoly/KUK006_OdevzdaniUkolu.aspx"
 
 # The school's server stores the selected week in session state, so the
 # coordinator always posts an explicit date. Six hours is a compromise between
@@ -59,3 +62,11 @@ MAX_SCAN_INTERVAL_HOURS: Final = 24
 # make sense for a "weeks ahead" setting.
 MIN_WEEKS_AHEAD: Final = 1
 MAX_WEEKS_AHEAD: Final = 8
+
+# Options-flow key: the to-do list (e.g. todo.shopping_list) that newly seen
+# homework is added to. Unset means homework is only exposed, never pushed.
+CONF_HOMEWORK_TODO: Final = "homework_todo"
+
+# Fired once per newly seen homework, whether or not a to-do list is set, so
+# automations can react to it however they like.
+EVENT_NEW_HOMEWORK: Final = f"{DOMAIN}_new_homework"

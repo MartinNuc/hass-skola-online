@@ -42,7 +42,11 @@
         "data": {
           "scan_interval_hours": "Interval aktualizace (hodiny)",
           "weeks_ahead": "Počet týdnů dopředu",
-          "event_title": "Název události"
+          "event_title": "Název události",
+          "homework_todo": "Přidávat nové úkoly do"
+        },
+        "data_description": {
+          "homework_todo": "Seznam úkolů, např. Nákupní seznam. Každý nově zadaný domácí úkol se přidá jednou; odškrtnutím ani smazáním se znovu neobjeví. Nechte prázdné, pokud mají být úkoly jen na senzoru."
         }
       }
     }
@@ -53,6 +57,13 @@
         "full": "Celý název předmětu",
         "abbreviation": "Zkratka",
         "both": "Zkratka a celý název předmětu"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "homework": {
+        "name": "Domácí úkoly"
       }
     }
   }

@@ -7,16 +7,26 @@ sticky cookie, so dropping it breaks the session).
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import date, tzinfo
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 
 import aiohttp
 
-from ..const import CALENDAR_URL, LOGIN_URL
+from ..const import CALENDAR_URL, HOMEWORK_DETAIL_URL, HOMEWORK_URL, LOGIN_URL
 from .exceptions import CannotConnect, InvalidAuth, SessionExpired
-from .models import Child, Entry
-from .parser import CHILDREN_SELECT, parse_children, parse_hidden_fields, parse_week
+from .models import Child, Entry, Homework
+from .parser import (
+    CHILDREN_SELECT,
+    HOMEWORK_CHILDREN_SELECT,
+    parse_children,
+    parse_form_fields,
+    parse_hidden_fields,
+    parse_homework_description,
+    parse_homework_list,
+    parse_week,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -50,6 +60,11 @@ class SkolaOnlineClient:
         self._password = password
         self._session = session
         self._tz = tz
+        # The timetable and the homework are polled by separate coordinators
+        # over this one ASP.NET session. The server keeps the viewstate and
+        # the selected child in that session, so one page flow must finish
+        # before the next starts.
+        self._lock = asyncio.Lock()
 
     async def login(self) -> None:
         """Authenticate and populate the session's cookie jar.
@@ -116,13 +131,18 @@ class SkolaOnlineClient:
         )
 
     async def _retry_once_on_expiry(self, call):
-        """Run `call()`, retrying once after a fresh login if it expired."""
-        try:
-            return await call()
-        except SessionExpired:
-            _LOGGER.debug("session expired, logging in again")
-            await self.login()
-            return await call()
+        """Run `call()`, retrying once after a fresh login if it expired.
+
+        Holds the client's lock throughout, so no other page flow can run
+        against the shared session in between.
+        """
+        async with self._lock:
+            try:
+                return await call()
+            except SessionExpired:
+                _LOGGER.debug("session expired, logging in again")
+                await self.login()
+                return await call()
 
     async def _fetch_week(
         self, monday: date, child_id: str | None
@@ -167,3 +187,49 @@ class SkolaOnlineClient:
         """
         page = await self._get_app_page(CALENDAR_URL)
         return parse_children(page)
+
+    async def fetch_homework(self, child_id: str | None = None) -> list[Homework]:
+        """Fetch the open homework list, without the assignment texts.
+
+        The list shows what the server-side session has selected, which is
+        not necessarily the child we want (a sibling's timetable fetch may
+        have switched it), so switch explicitly when it differs.
+        """
+        return await self._retry_once_on_expiry(
+            lambda: self._fetch_homework(child_id)
+        )
+
+    async def fetch_homework_description(self, task_id: str) -> str | None:
+        """Fetch one task's full assignment text (Podrobné zadání)."""
+        url = f"{HOMEWORK_DETAIL_URL}?{urlencode({'UkolID': task_id})}"
+
+        async def call() -> str | None:
+            return parse_homework_description(await self._get_app_page(url))
+
+        return await self._retry_once_on_expiry(call)
+
+    async def _fetch_homework(self, child_id: str | None) -> list[Homework]:
+        page = await self._get_app_page(HOMEWORK_URL)
+        fields = parse_form_fields(page)
+        selected = fields.get(HOMEWORK_CHILDREN_SELECT)
+        if child_id and selected is not None and selected != child_id:
+            # What the dropdown's onchange does: an auto-postback naming
+            # the dropdown as the event target.
+            payload = {
+                **fields,
+                "__EVENTTARGET": HOMEWORK_CHILDREN_SELECT,
+                "__EVENTARGUMENT": "",
+                HOMEWORK_CHILDREN_SELECT: child_id,
+            }
+            try:
+                async with self._session.post(HOMEWORK_URL, data=payload) as response:
+                    if response.status >= 500:
+                        raise CannotConnect(
+                            f"homework returned HTTP {response.status}"
+                        )
+                    page = await response.text()
+                    if response.url.host != APP_HOST:
+                        raise SessionExpired("redirected away during homework post")
+            except aiohttp.ClientError as err:
+                raise CannotConnect(f"could not reach Škola Online: {err}") from err
+        return parse_homework_list(page, self._tz)

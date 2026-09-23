@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME, Platform
 from homeassistant.core import HomeAssistant
@@ -11,10 +13,20 @@ from homeassistant.util import dt as dt_util
 from .api.client import SkolaOnlineClient
 from .const import CONF_CHILD_ID
 from .coordinator import SkolaOnlineCoordinator
+from .homework import HomeworkCoordinator
 
-PLATFORMS: list[Platform] = [Platform.CALENDAR]
+PLATFORMS: list[Platform] = [Platform.CALENDAR, Platform.SENSOR]
 
-type SkolaOnlineConfigEntry = ConfigEntry[SkolaOnlineCoordinator]
+
+@dataclass
+class SkolaOnlineData:
+    """What a loaded entry keeps: one coordinator per page it polls."""
+
+    timetable: SkolaOnlineCoordinator
+    homework: HomeworkCoordinator
+
+
+type SkolaOnlineConfigEntry = ConfigEntry[SkolaOnlineData]
 
 
 async def async_setup_entry(
@@ -50,7 +62,15 @@ async def async_setup_entry(
     # password sends the user to reauth instead of silently loading empty.
     await coordinator.async_config_entry_first_refresh()
 
-    entry.runtime_data = coordinator
+    homework = HomeworkCoordinator(
+        hass, client, entry.data.get(CONF_CHILD_ID), config_entry=entry
+    )
+    # Not a first refresh that can fail setup: homework is the secondary
+    # feature, and a problem reading it must not take the timetable down.
+    # A failure here just leaves the sensor unavailable until the next poll.
+    await homework.async_refresh()
+
+    entry.runtime_data = SkolaOnlineData(timetable=coordinator, homework=homework)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 

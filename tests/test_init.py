@@ -119,3 +119,44 @@ async def test_unloading_releases_the_entrys_session(hass):
         await hass.async_block_till_done()
 
     assert sessions[0].closed is True
+
+
+async def test_setup_creates_the_homework_sensor(hass):
+    entry = _entry()
+    entry.add_to_hass(hass)
+
+    client = AsyncMock()
+    client.fetch_week.return_value = []
+    client.fetch_homework.return_value = []
+
+    with patch(
+        "custom_components.skola_online.SkolaOnlineClient", return_value=client
+    ):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+    state = hass.states.get("sensor.dite_jedno_homework")
+    assert state is not None
+    assert state.state == "0"
+    assert state.attributes["homework"] == []
+
+
+async def test_a_homework_failure_does_not_fail_setup(hass):
+    from custom_components.skola_online.api.exceptions import CannotConnect
+
+    entry = _entry()
+    entry.add_to_hass(hass)
+
+    client = AsyncMock()
+    client.fetch_week.return_value = []
+    client.fetch_homework.side_effect = CannotConnect("down")
+
+    with patch(
+        "custom_components.skola_online.SkolaOnlineClient", return_value=client
+    ):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+    assert entry.state is ConfigEntryState.LOADED
+    assert hass.states.get("calendar.dite_jedno") is not None
+    assert hass.states.get("sensor.dite_jedno_homework").state == "unavailable"

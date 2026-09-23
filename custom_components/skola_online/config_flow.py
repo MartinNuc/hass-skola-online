@@ -26,6 +26,7 @@ from .const import (
     CONF_CHILD_ID,
     CONF_CHILD_NAME,
     CONF_EVENT_TITLE,
+    CONF_HOMEWORK_TODO,
     CONF_SCAN_INTERVAL_HOURS,
     CONF_WEEKS_AHEAD,
     DEFAULT_EVENT_TITLE,
@@ -210,7 +211,7 @@ class SkolaOnlineOptionsFlow(OptionsFlowWithReload):
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """The only step: interval and fetch window, one form."""
+        """The only step: interval, fetch window, titles and homework list."""
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
 
@@ -263,6 +264,14 @@ class SkolaOnlineOptionsFlow(OptionsFlowWithReload):
                         mode=selector.SelectSelectorMode.DROPDOWN,
                         translation_key=CONF_EVENT_TITLE,
                     )
+                ),
+                # Optional, and pre-filled via suggested_value rather than
+                # default, so it can be cleared again to stop adding homework.
+                vol.Optional(
+                    CONF_HOMEWORK_TODO,
+                    description={"suggested_value": options.get(CONF_HOMEWORK_TODO)},
+                ): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="todo")
                 ),
             }
         )
