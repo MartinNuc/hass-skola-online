@@ -46,7 +46,7 @@
           "homework_todo": "Add new homework to"
         },
         "data_description": {
-          "homework_todo": "A to-do list, e.g. the Shopping List. Each newly assigned homework is added once; ticking it off or deleting it won't bring it back. Leave empty to only show homework on the sensor."
+          "homework_todo": "A to-do list to add each newly assigned homework to, once. A Local To-do list keeps the due date and the teacher's text. Ticking an item off or deleting it won't bring it back. Leave empty to only show homework on the sensor."
         }
       }
     }

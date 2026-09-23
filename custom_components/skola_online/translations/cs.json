@@ -46,7 +46,7 @@
           "homework_todo": "Přidávat nové úkoly do"
         },
         "data_description": {
-          "homework_todo": "Seznam úkolů, např. Nákupní seznam. Každý nově zadaný domácí úkol se přidá jednou; odškrtnutím ani smazáním se znovu neobjeví. Nechte prázdné, pokud mají být úkoly jen na senzoru."
+          "homework_todo": "Seznam úkolů, do kterého se každý nově zadaný domácí úkol jednou přidá. Seznam z integrace Místní seznam úkolů zachová termín i text zadání. Odškrtnutím ani smazáním se úkol znovu neobjeví. Nechte prázdné, pokud mají být úkoly jen na senzoru."
         }
       }
     }

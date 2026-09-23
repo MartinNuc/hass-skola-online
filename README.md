@@ -1,74 +1,85 @@
 # Škola Online for Home Assistant
 
-Brings a child's school timetable from [skolaonline.cz](https://www.skolaonline.cz)
-into Home Assistant as a calendar entity, so you can see the week's subjects on a
-dashboard and automate on what is coming next.
+Brings your child's timetable and homework from
+[skolaonline.cz](https://www.skolaonline.cz) into Home Assistant.
 
-Škola Online publishes no API, so this integration signs in and reads the same
-parent web pages a browser would. That means it can break when they change their
-site; open an issue if it does.
+- **Calendar** with every lesson and school event
+- **Homework sensor** listing current tasks with the teacher's full assignment
+- **New homework on a to-do list**, ready to tick off
+- **Event** on each new task, for your own automations
 
-## Installation
+Škola Online has no API, so the integration reads the same parent pages a
+browser does. If the site changes and something breaks, please
+[open an issue](https://github.com/MartinNuc/hass-skola-online/issues).
 
-Requires Home Assistant 2025.3.0 or newer; tested against 2026.2.3.
+## Install
 
-**HACS** — in HACS, choose *Integrations → ⋮ → Custom repositories*, add
-`https://github.com/MartinNuc/hass-skola-online` as an *Integration*, then
-install **Škola Online** and restart Home Assistant.
+Requires Home Assistant 2025.3 or newer.
 
-**Manually** — copy `custom_components/skola_online/` into your Home Assistant
-`config/custom_components/` directory and restart.
+1. In HACS, go to *⋮ → Custom repositories*. Add
+   `https://github.com/MartinNuc/hass-skola-online` as an *Integration*.
+2. Install **Škola Online** and restart Home Assistant.
+3. Go to *Settings → Devices & Services → Add Integration → Škola Online*.
+   Sign in with your usual username and password.
 
-## Setup
+If your account has more than one child, pick one, then add the integration
+again for each of the others.
 
-Go to *Settings → Devices & Services → Add Integration* and search for
-**Škola Online**. Sign in with your usual username and password. If your account
-covers more than one child, pick one; repeat the process to add the others.
+Without HACS, copy `custom_components/skola_online/` into
+`config/custom_components/` and restart.
 
-Accounts that sign in through *Přihlásit přes Microsoft* are not supported.
+Signing in through *Přihlásit přes Microsoft* is not supported.
 
-## What you get
+## Timetable
 
-One calendar entity per child, named after the child. Each lesson is an event:
+Each child gets a calendar named after them (`calendar.<child>`). Every
+lesson is an event:
 
-| Field | Content |
+| | Example |
 |---|---|
-| Summary | Full subject name by default, e.g. `Český jazyk a literatura` — configurable, see Options below |
-| Description | Full subject name and teacher |
+| Title | `Matematika` (or `M`, or `M — Matematika`; see [Options](#options)) |
+| Description | Subject and teacher |
 | Location | Room |
 
-School events such as `2. školní den` appear on the same calendar, spanning the
-periods they occupy.
-
-The timetable refreshes every 6 hours by default and covers the current week
-plus the next three, so substitutions posted during the week are picked up and
-a Friday still shows you next Monday. Both numbers are configurable — see
-below.
+School events such as `2. školní den` appear on the same calendar.
 
 ## Homework
 
-Each child also gets a **Homework** sensor (`sensor.<child>_homework`, or `sensor.<child>_domaci_ukoly` if Home Assistant runs in Czech). Its
-state is the number of tasks on the child's *Domácí úkoly* page, and its
-`homework` attribute lists them: title, subject, when assigned, when due,
-submission status and the teacher's full assignment text. It is checked on the
-same refresh interval as the timetable.
+`sensor.<child>_homework` shows how many tasks are on the child's
+*Domácí úkoly* page. Its `homework` attribute lists each task with its title,
+subject, assigned and due dates, submission status and the teacher's full
+assignment text.
 
-### Adding new homework to a to-do list
+### Tracking homework on a to-do list
 
-To track homework on a list you tick off yourself, for example the built-in
-Shopping List, pick that list under *Add new homework to* in the options
-(below). Each task is added once, when it first appears on the site. The
-integration remembers which tasks it has already added, and that survives
-restarts, so ticking an item off or deleting it never brings it back.
+New homework can be added automatically to a to-do list, where you tick it
+off when it's done. Use **Local To-do**: it keeps each task's due date and
+the teacher's full text.
 
-Items are named `Subject: Task`. If the list supports due dates and
-descriptions (e.g. Local To-do), those go in their own fields. The Shopping
-List supports neither, so there the due date goes into the name instead —
+1. Go to *Settings → Devices & Services → Add Integration → Local To-do*.
+   Name the list, for example `Domácí úkoly`.
+2. Open *Škola Online → Configure* and set *Add new homework to* to
+   `todo.domaci_ukoly`.
+
+Each task is added once, when it first appears on the site. For example:
+
+| Item | Due | Description |
+|---|---|---|
+| `Český jazyk a literatura: Psaní číslice 2` | 23. 9. 23:59 | The teacher's assignment text |
+
+When you tick off or delete an item, it doesn't come back. The integration
+remembers what it has already added, and that survives restarts. When you
+first set this up, every task currently on the site is added.
+
+Other lists work too. A list without due dates or descriptions, such as the
+Shopping List, gets the date in the item's name:
 `Český jazyk a literatura: Psaní číslice 2 (do 23.9.)`.
 
-Every new task also fires a `skola_online_new_homework` event, with `title`,
-`subject`, `assigned`, `due`, `description`, `id` and `config_entry_id`, for
-automations of your own — a phone notification, say:
+### Automations
+
+Every new task fires a `skola_online_new_homework` event. The event data has
+`title`, `subject`, `assigned`, `due`, `description`, `id` and
+`config_entry_id`. For example, to get a notification on your phone:
 
 ```yaml
 triggers:
@@ -83,96 +94,44 @@ actions:
 
 ## Options
 
-From *Settings → Devices & Services → Škola Online → Configure* (per child):
+These are set per child in *Settings → Devices & Services → Škola Online →
+Configure*. Changes apply immediately.
 
-| Setting | Default | Range |
+| Setting | Default | |
 |---|---|---|
-| Refresh interval | 6 hours | 1–24 hours |
-| Weeks to fetch ahead | 4 | 1–8 |
-| Event title | Full subject name | Full subject name / Abbreviation / Abbreviation and full subject name |
-| Add new homework to | — (off) | Any to-do list entity |
+| Refresh interval | 6 hours | 1–24 hours. Used for both the timetable and homework. |
+| Weeks to fetch ahead | 4 | 1–8. The current week plus the following ones. |
+| Event title | Full subject name | `Matematika`, `M`, or `M — Matematika` |
+| Add new homework to | off | Any to-do list |
 
-The interval is in whole hours, not minutes — this is a school timetable, not
-a stock ticker, and the lower bound keeps the integration a polite guest on
-skolaonline.cz's server rather than hammering it. Changing any value takes
-effect immediately; no restart needed.
+The refresh interval is capped at hourly so the integration doesn't overload
+the school's server.
 
-Event title controls what a lesson's calendar summary shows: the full
-subject name (e.g. `Matematika`), the abbreviation (`M`, what fits in a
-calendar card cell), or both together (`M — Matematika`). The description
-always keeps the full subject name and teacher, whichever title you pick.
-School events such as `2. školní den` are unaffected — they have no separate
-abbreviation, so they always show their own title.
+## Development
 
-## Development: capturing a real-page fixture
+```bash
+uv venv --python 3.13 .venv
+uv pip install --python .venv/bin/python -r requirements-test.txt
+.venv/bin/python -m pytest
+```
 
-`tests/` runs entirely against synthetic HTML except for one regression test
-over a real, scrubbed page, which proves the parser matches the actual site
-and not just its own synthetic fixtures. To (re)capture it, put your username
-and the names to redact in a gitignored `capture.local.json` at the repo root:
+The tests run on synthetic HTML, plus scrubbed real pages in
+`tests/fixtures/`. To capture a fresh timetable page, run:
+
+```bash
+.venv/bin/python scripts/capture_fixture.py 2026-09-14
+```
+
+The script prompts for your password, which is never stored. Put your
+username and the names to redact in a gitignored `capture.local.json`:
 
 ```json
-{"user": "...", "redact": ["Surname F.", "Child Name"]}
+{"user": "...", "redact": ["Surname F.", "Child Name", "SCHOOLCODE"]}
 ```
 
-and run it with the project's virtualenv interpreter (create one first with
-`uv venv --python 3.13 .venv && uv pip install --python .venv/bin/python -r requirements-test.txt`
-if you have not already — the script needs `beautifulsoup4` and `aiohttp`):
-
-```bash
-.venv/bin/python scripts/capture_fixture.py 2026-09-14   # prompts for the password
-```
-
-**The password is never stored and never passed as a flag** — it is read
-from `SKOLA_PASS` if that's set in the environment, otherwise the script
-prompts for it interactively (`getpass`, so nothing is echoed and nothing
-touches shell history). There is deliberately no `--password` flag: a
-command-line argument would sit in shell history and be visible to any other
-process via `ps`, which is strictly worse than an environment variable or a
-prompt for a secret. `capture.local.json` can hold a username and redaction
-names but must never hold a password — the script refuses to run if it finds
-a `password` key there, rather than silently ignoring it.
-
-`--user`/`--redact` flags override `capture.local.json`, which overrides the
-plain environment-variable form (`SKOLA_USER`/`SKOLA_REDACT`, still fully
-supported for existing usage and CI):
-
-```bash
-.venv/bin/python scripts/capture_fixture.py --user '...' --redact 'Surname F.,Child Name' 2026-09-14
-SKOLA_USER='...' SKOLA_REDACT='Surname F.,Child Name' .venv/bin/python scripts/capture_fixture.py 2026-09-14
-```
-
-`--redact` (and `capture.local.json`'s `redact`, and `SKOLA_REDACT`) all take
-the same shape: a comma-separated list of names (or, in the JSON config, a
-JSON list), each matched literally against the page, with whitespace around
-commas ignored. Every name must appear exactly as the page renders it — the
-portal shows a teacher as "Surname F." in some tooltips but by full name
-elsewhere, so both forms may need listing. Run
-`.venv/bin/python scripts/capture_fixture.py --help` for the full option reference.
-
-One thing worth adding to `redact` that is easy to overlook: **your school's
-code**. The portal serves a per-school stylesheet at a path like
-`/SOL/Themes/style.<CODE>.min.css`, so the code appears in a `<link href>` that
-has nothing to do with the timetable and does not look like a child id. It
-identifies the school, so list it alongside the names.
-
-The script's automated scrubbing covers three things, and only these three
-things: viewstate/event-validation input values, child-id-shaped strings
-(`LETTERS+DIGITS#LETTERS+DIGITS`) wherever they appear — attributes, plain
-text, inline `<script>` blocks — and every configured name to redact. It
-refuses to write the file if any of those three checks still finds something
-afterwards, scanning the whole captured page rather than trusting that
-scrubbing reached everywhere.
-
-That automated pass is **not a substitute for a human reading the file.** It
-cannot recognise a form of personal data it wasn't told about — a teacher's
-name that didn't make it into `SKOLA_REDACT`, for instance, or an identifying
-detail with no fixed shape. `tests/fixtures/real_week.html` is gitignored on
-purpose: regardless of what the script reports, **open the file and read it**
-before it goes anywhere near a commit, to confirm by eye that no name,
-cookie, viewstate or child id survived. Only once you've done that, stage it
-deliberately:
-
-```bash
-git add -f tests/fixtures/real_week.html
-```
+List your school's code in `redact` as well, because it appears in a
+stylesheet URL. The script removes viewstate, child IDs and the names you
+list, and it refuses to save the file if any of them remain. It can't catch
+personal data it wasn't told about, so **read the file yourself** before you
+run `git add -f tests/fixtures/real_week.html`. Run
+`scripts/capture_fixture.py --help` for all the options.

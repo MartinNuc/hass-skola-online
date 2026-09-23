@@ -131,7 +131,6 @@ async def test_a_failed_add_is_retried_on_the_next_poll(hass):
 
     await coordinator._async_update_data()
     await hass.async_block_till_done()
-    assert events == []
 
     hass.services.async_remove("todo", "add_item")
     calls = _fake_todo(hass)
@@ -139,13 +138,45 @@ async def test_a_failed_add_is_retried_on_the_next_poll(hass):
     await hass.async_block_till_done()
 
     assert len(calls) == 1
+    # The announcement doesn't wait for the list.
     assert len(events) == 1
 
 
 async def test_a_missing_todo_list_is_retried_too(hass):
     coordinator, _ = _setup(hass, [_hw()], todo="todo.gone")
     await coordinator._async_update_data()
-    assert coordinator._seen == set()
+    assert coordinator._added == {"todo.gone": set()}
+
+
+async def test_a_list_picked_later_gets_the_homework_already_there(hass):
+    """Picking a list in the options reloads the entry with a new coordinator."""
+    events = _events(hass)
+    before, _ = _setup(hass, [_hw()], todo=None)
+    await before._async_update_data()
+
+    calls = _fake_todo(hass)
+    after, _ = _setup(hass, [_hw()])
+    after._store = before._store
+    await after._async_update_data()
+    await after._async_update_data()
+    await hass.async_block_till_done()
+
+    assert len(calls) == 1
+    assert len(events) == 1
+
+
+async def test_switching_lists_fills_the_new_one_once(hass):
+    calls = _fake_todo(hass)
+    hass.states.async_set("todo.other", "0", {ATTR_SUPPORTED_FEATURES: 0})
+    first, _ = _setup(hass, [_hw()])
+    await first._async_update_data()
+
+    second, _ = _setup(hass, [_hw()], todo="todo.other")
+    second._store = first._store
+    await second._async_update_data()
+    await second._async_update_data()
+
+    assert [c.data["entity_id"] for c in calls] == [TODO, "todo.other"]
 
 
 async def test_without_a_todo_list_only_the_event_fires(hass):

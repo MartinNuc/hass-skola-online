@@ -1,8 +1,10 @@
 """Polls the homework list and forwards newly assigned tasks.
 
-"New" means a task id this config entry has never seen before, remembered in
-a Store so a restart does not re-add everything, and so ticking an item off
-(or deleting it) in the to-do list never brings it back.
+A Store remembers two things, so a restart repeats neither:
+- which tasks were announced with the new-homework event, once each;
+- which tasks went onto which to-do list. Ticking an item off (or deleting
+  it) never brings it back, but a list picked later still gets the homework
+  already on the site.
 """
 
 from __future__ import annotations
@@ -95,6 +97,8 @@ class HomeworkCoordinator(DataUpdateCoordinator[list[Homework]]):
             hass, STORAGE_VERSION, f"{DOMAIN}.homework.{config_entry.entry_id}"
         )
         self._seen: set[str] | None = None
+        # Per to-do list entity id: the tasks already added to it.
+        self._added: dict[str, set[str]] = {}
         # Assignment texts don't change once set, and each costs a request,
         # so fetch each task's once rather than on every poll.
         self._descriptions: dict[str, str | None] = {}
@@ -126,31 +130,50 @@ class HomeworkCoordinator(DataUpdateCoordinator[list[Homework]]):
         if self._seen is None:
             stored = await self._store.async_load() or {}
             self._seen = set(stored.get("seen", []))
+            self._added = {
+                entity_id: set(ids)
+                for entity_id, ids in stored.get("added", {}).items()
+            }
 
-        new = [item for item in homework if item.id and item.id not in self._seen]
-        if not new:
-            return
-
-        for item in new:
-            if self.todo_entity_id and not await self._add_to_todo(item):
-                # Neither marked seen nor announced, so the next poll retries
-                # it and the event still fires exactly once.
+        changed = False
+        for item in homework:
+            if not item.id:
                 continue
-            self._seen.add(item.id)
-            self.hass.bus.async_fire(
-                EVENT_NEW_HOMEWORK,
+            if self.todo_entity_id:
+                added = self._added.setdefault(self.todo_entity_id, set())
+                # A failed add stays unrecorded, so the next poll retries it.
+                if item.id not in added and await self._add_to_todo(item):
+                    added.add(item.id)
+                    changed = True
+            if item.id not in self._seen:
+                self._seen.add(item.id)
+                changed = True
+                self._announce(item)
+
+        if changed:
+            await self._store.async_save(
                 {
-                    "config_entry_id": self.config_entry.entry_id,
-                    "id": item.id,
-                    "title": item.title,
-                    "subject": item.subject,
-                    "assigned": item.assigned.isoformat() if item.assigned else None,
-                    "due": item.due.isoformat() if item.due else None,
-                    "description": item.description,
-                },
+                    "seen": sorted(self._seen),
+                    "added": {
+                        entity_id: sorted(ids)
+                        for entity_id, ids in self._added.items()
+                    },
+                }
             )
 
-        await self._store.async_save({"seen": sorted(self._seen)})
+    def _announce(self, item: Homework) -> None:
+        self.hass.bus.async_fire(
+            EVENT_NEW_HOMEWORK,
+            {
+                "config_entry_id": self.config_entry.entry_id,
+                "id": item.id,
+                "title": item.title,
+                "subject": item.subject,
+                "assigned": item.assigned.isoformat() if item.assigned else None,
+                "due": item.due.isoformat() if item.due else None,
+                "description": item.description,
+            },
+        )
 
     async def _add_to_todo(self, item: Homework) -> bool:
         state = self.hass.states.get(self.todo_entity_id)
