@@ -31,6 +31,7 @@ from .parser import (
 _LOGGER = logging.getLogger(__name__)
 
 APP_HOST = "aplikace.skolaonline.cz"
+CALENDAR_PICKER = "calendarPart$kalendar"
 
 
 def calendar_post_data(day: date) -> str:
@@ -44,6 +45,16 @@ def calendar_post_data(day: date) -> str:
     """
     stamp = f"{day.year}x{day.month}x{day.year}x{day.month}x{day.day}x1"
     return quote(f'<x PostData="{stamp}"></x>', safe="/")
+
+
+def calendar_day_click(day: date) -> str:
+    """The __EVENTARGUMENT of clicking `day` in the month picker.
+
+    PostData alone only moves the picker; the grid keeps showing the week the
+    session last viewed until a day is clicked. The argument is 100 + the day
+    for a day in the month on display, which PostData has just set to `day`'s.
+    """
+    return str(100 + day.day)
 
 
 class SkolaOnlineClient:
@@ -154,8 +165,8 @@ class SkolaOnlineClient:
         page = await self._get_app_page(CALENDAR_URL)
 
         payload: dict[str, str] = {
-            "__EVENTTARGET": "",
-            "__EVENTARGUMENT": "",
+            "__EVENTTARGET": CALENDAR_PICKER,
+            "__EVENTARGUMENT": calendar_day_click(monday),
             "__LASTFOCUS": "",
             **parse_hidden_fields(page),
             "calendarPart_kalendar": calendar_post_data(monday),

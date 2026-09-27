@@ -11,6 +11,9 @@ from custom_components.skola_online.api.parser import parse_week
 
 FIXTURE = Path(__file__).parent / "fixtures" / "real_week.html"
 PRAGUE = ZoneInfo("Europe/Prague")
+# The week the page actually shows. It was captured asking for 14.9., back
+# when the client's week selection was silently ignored by the server.
+MONDAY = date(2026, 9, 7)
 
 pytestmark = pytest.mark.skipif(
     not FIXTURE.exists(), reason="no captured fixture in this checkout"
@@ -19,7 +22,7 @@ pytestmark = pytest.mark.skipif(
 
 def test_a_real_week_parses_into_lessons():
     entries = parse_week(
-        FIXTURE.read_text(encoding="utf-8"), monday=date(2026, 9, 14), tz=PRAGUE
+        FIXTURE.read_text(encoding="utf-8"), monday=MONDAY, tz=PRAGUE
     )
 
     assert entries, "expected at least one lesson"
@@ -32,7 +35,7 @@ def test_a_real_week_parses_into_lessons():
 
 def test_a_real_week_populates_teacher_and_room():
     entries = parse_week(
-        FIXTURE.read_text(encoding="utf-8"), monday=date(2026, 9, 14), tz=PRAGUE
+        FIXTURE.read_text(encoding="utf-8"), monday=MONDAY, tz=PRAGUE
     )
     lessons = [entry for entry in entries if entry.is_lesson]
 
@@ -47,7 +50,7 @@ def test_every_lesson_subject_on_the_real_week_has_a_known_full_name():
     see MARKER_CLASS_SUBJECT_FULL in api/parser.py.
     """
     entries = parse_week(
-        FIXTURE.read_text(encoding="utf-8"), monday=date(2026, 9, 14), tz=PRAGUE
+        FIXTURE.read_text(encoding="utf-8"), monday=MONDAY, tz=PRAGUE
     )
     lessons = [entry for entry in entries if entry.is_lesson]
 

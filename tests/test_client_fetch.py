@@ -70,6 +70,9 @@ async def test_fetch_week_posts_the_requested_date_and_parses_the_result(client)
 
     assert sent["calendarPart_kalendar"] == calendar_post_data(date(2026, 9, 14))
     assert sent["calendarPart$kalendar$RBSelectionMode"] == "Week"
+    # Without the day click the server returns the week it last showed.
+    assert sent["__EVENTTARGET"] == "calendarPart$kalendar"
+    assert sent["__EVENTARGUMENT"] == "114"
     assert sent["CBZobrazitRozvrh"] == "on"
     assert sent["__VIEWSTATE"] == "vs"
     assert sent["__VIEWSTATE_SESSION_KEY"] == "sk"

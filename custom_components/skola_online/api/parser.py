@@ -36,6 +36,7 @@ _WEEKDAY_OFFSETS = {"Po": 0, "Út": 1, "St": 2, "Čt": 3, "Pá": 4, "So": 5, "Ne
 
 _TIME_RANGE = re.compile(r"(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})")
 _DAY_LABEL = re.compile(r"(Po|Út|St|Čt|Pá|So|Ne)")
+_DAY_MONTH = re.compile(r"(\d{1,2})\.\s*(\d{1,2})\.")
 
 _TOOLTIP_CALL = re.compile(
     r"onMouseOverTooltip\(\s*'(?P<title>.*?)'\s*,\s*'(?P<body>.*?)'\s*\)", re.S
@@ -108,6 +109,11 @@ def parse_day_rows(html: str, monday: date) -> dict[int, date]:
     The grid labels days as "Po 14.9." with no year, so the year comes from the
     Monday we asked for. Deriving the date from the weekday offset rather than
     the printed day number keeps a week that straddles New Year correct.
+
+    The printed day and month must still agree with that date. The server
+    answers with the week it last showed when it did not take our date, and
+    stamping that week with the requested dates would put last week's lessons
+    on a holiday.
     """
     rows = _rows(html)
     days: dict[int, date] = {}
@@ -120,7 +126,16 @@ def parse_day_rows(html: str, monday: date) -> dict[int, date]:
         weekday = _DAY_LABEL.search(label)
         if weekday is None:
             continue
-        days[index] = monday + timedelta(days=_WEEKDAY_OFFSETS[weekday.group(1)])
+        day = monday + timedelta(days=_WEEKDAY_OFFSETS[weekday.group(1)])
+        printed = _DAY_MONTH.search(label)
+        if printed is not None and (
+            int(printed.group(1)),
+            int(printed.group(2)),
+        ) != (day.day, day.month):
+            raise ParseError(
+                f"grid shows {label!r}, not the week of {monday.isoformat()}"
+            )
+        days[index] = day
 
     return days
 

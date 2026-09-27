@@ -52,6 +52,14 @@ def test_parse_day_rows_handles_a_week_spanning_new_year():
     assert days == {1: date(2025, 12, 29), 2: date(2026, 1, 1)}
 
 
+def test_parse_day_rows_rejects_a_grid_for_another_week():
+    """The server falls back to the last-viewed week; never re-date it."""
+    html = week_html(rows=day_row("Po", "21.9.", EMPTY_CELL * 4))
+
+    with pytest.raises(ParseError, match="2026-09-28"):
+        parse_day_rows(html, monday=date(2026, 9, 28))
+
+
 def test_parse_periods_keys_by_column_not_by_printed_number():
     """Dict keys are column indexes, not the printed period numbers.
 
