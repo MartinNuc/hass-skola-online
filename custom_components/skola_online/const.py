@@ -63,6 +63,11 @@ MAX_SCAN_INTERVAL_HOURS: Final = 24
 MIN_WEEKS_AHEAD: Final = 1
 MAX_WEEKS_AHEAD: Final = 8
 
+# Homework is checked on the clock rather than on the refresh interval: every
+# two hours, on the hour, from 8:00 to 22:00 local time. Nothing gets assigned
+# overnight, so there's no point asking the school's server then.
+HOMEWORK_REFRESH_HOURS: Final = tuple(range(8, 23, 2))
+
 # Options-flow key: the to-do list (e.g. todo.shopping_list) that newly seen
 # homework is added to. Unset means homework is only exposed, never pushed.
 CONF_HOMEWORK_TODO: Final = "homework_todo"

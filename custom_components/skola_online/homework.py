@@ -11,8 +11,6 @@ from __future__ import annotations
 
 import logging
 from dataclasses import replace
-from datetime import timedelta
-
 from homeassistant.components.todo import (
     ATTR_DESCRIPTION,
     ATTR_DUE_DATE,
@@ -33,8 +31,6 @@ from .api.exceptions import CannotConnect, InvalidAuth, ParseError, SessionExpir
 from .api.models import Homework
 from .const import (
     CONF_HOMEWORK_TODO,
-    CONF_SCAN_INTERVAL_HOURS,
-    DEFAULT_SCAN_INTERVAL_HOURS,
     DOMAIN,
     EVENT_NEW_HOMEWORK,
 )
@@ -71,7 +67,11 @@ def todo_item_data(homework: Homework, features: int) -> dict:
 
 
 class HomeworkCoordinator(DataUpdateCoordinator[list[Homework]]):
-    """Polls the child's open homework on the timetable's interval."""
+    """Reads the child's open homework when asked.
+
+    It has no update interval of its own: the entry refreshes it at fixed
+    hours of the day (see HOMEWORK_REFRESH_HOURS).
+    """
 
     def __init__(
         self,
@@ -86,9 +86,6 @@ class HomeworkCoordinator(DataUpdateCoordinator[list[Homework]]):
             _LOGGER,
             config_entry=config_entry,
             name=f"{DOMAIN}_homework",
-            update_interval=timedelta(
-                hours=options.get(CONF_SCAN_INTERVAL_HOURS, DEFAULT_SCAN_INTERVAL_HOURS)
-            ),
         )
         self.client = client
         self.child_id = child_id

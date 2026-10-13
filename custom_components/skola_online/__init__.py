@@ -3,15 +3,17 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
+from homeassistant.helpers.event import async_track_time_change
 from homeassistant.util import dt as dt_util
 
 from .api.client import SkolaOnlineClient
-from .const import CONF_CHILD_ID
+from .const import CONF_CHILD_ID, HOMEWORK_REFRESH_HOURS
 from .coordinator import SkolaOnlineCoordinator
 from .homework import HomeworkCoordinator
 
@@ -69,6 +71,19 @@ async def async_setup_entry(
     # feature, and a problem reading it must not take the timetable down.
     # A failure here just leaves the sensor unavailable until the next poll.
     await homework.async_refresh()
+
+    async def _refresh_homework(now: datetime) -> None:
+        await homework.async_refresh()
+
+    entry.async_on_unload(
+        async_track_time_change(
+            hass,
+            _refresh_homework,
+            hour=list(HOMEWORK_REFRESH_HOURS),
+            minute=0,
+            second=0,
+        )
+    )
 
     entry.runtime_data = SkolaOnlineData(timetable=coordinator, homework=homework)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)

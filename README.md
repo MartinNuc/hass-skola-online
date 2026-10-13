@@ -99,13 +99,16 @@ Configure*. Changes apply immediately.
 
 | Setting | Default | |
 |---|---|---|
-| Refresh interval | 6 hours | 1–24 hours. Used for both the timetable and homework. |
+| Refresh interval | 6 hours | 1–24 hours. Used for the timetable. |
 | Weeks to fetch ahead | 4 | 1–8. The current week plus the following ones. |
 | Event title | Full subject name | `Matematika`, `M`, or `M — Matematika` |
 | Add new homework to | off | Any to-do list |
 
 The refresh interval is capped at hourly so the integration doesn't overload
 the school's server.
+
+Homework is checked when Home Assistant starts, then every two hours from 8:00
+to 22:00. It isn't checked overnight.
 
 ## Development
 

@@ -1,9 +1,14 @@
+from datetime import datetime, time, timedelta
 from unittest.mock import AsyncMock, patch
 
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from homeassistant.util import dt as dt_util
+from pytest_homeassistant_custom_component.common import (
+    MockConfigEntry,
+    async_fire_time_changed,
+)
 
 from custom_components.skola_online.const import CONF_CHILD_ID, CONF_CHILD_NAME, DOMAIN
 
@@ -160,3 +165,37 @@ async def test_a_homework_failure_does_not_fail_setup(hass):
     assert entry.state is ConfigEntryState.LOADED
     assert hass.states.get("calendar.dite_jedno") is not None
     assert hass.states.get("sensor.dite_jedno_homework").state == "unavailable"
+
+
+async def test_homework_is_checked_every_two_hours_during_the_day(hass):
+    entry = _entry()
+    entry.add_to_hass(hass)
+
+    client = AsyncMock()
+    client.fetch_week.return_value = []
+    client.fetch_homework.return_value = []
+
+    with patch(
+        "custom_components.skola_online.SkolaOnlineClient", return_value=client
+    ):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+    day = dt_util.now().date() + timedelta(days=1)
+    tz = dt_util.get_default_time_zone()
+    # Jump to the evening before first, so any slot still pending from today
+    # fires now rather than at midnight.
+    async_fire_time_changed(hass, datetime.combine(day, time(0), tz) - timedelta(minutes=30))
+    await hass.async_block_till_done()
+    client.fetch_homework.reset_mock()
+
+    checked = []
+    for hour in range(24):
+        at = datetime.combine(day, time(hour), tz)
+        async_fire_time_changed(hass, at)
+        await hass.async_block_till_done()
+        if client.fetch_homework.call_count:
+            checked.append(hour)
+            client.fetch_homework.reset_mock()
+
+    assert checked == [8, 10, 12, 14, 16, 18, 20, 22]
